@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"time"
 )
 
@@ -29,26 +30,26 @@ All numbers must be positive integers.
 /*
 The following go program solves the above problem by brute force using a go worker pool
 Output:
-calculationTime(6m1.2539174s)
+calculationTime(4m19.8700246s)
 Results:
-0: 197,205,213
-1: 197,213,205
-2: 199,175,223
-3: 199,223,175
-4: 205,197,213
-5: 205,213,197
-6: 209,217,225
-7: 209,225,217
-8: 213,197,205
-9: 213,205,197
-10: 217,209,225
-11: 217,225,209
-12: 223,175,199
-13: 223,199,175
-14: 225,209,217
-15: 225,217,209
-16: 175,199,223
-17: 175,223,199
+225,209,217
+225,217,209
+197,205,213
+197,213,205
+199,175,223
+199,223,175
+205,197,213
+205,213,197
+175,199,223
+175,223,199
+209,217,225
+209,225,217
+213,197,205
+213,205,197
+217,209,225
+217,225,209
+223,175,199
+223,199,175
 */
 
 type GameState struct {
@@ -147,10 +148,12 @@ func main() {
 		fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
 		results = append(results, result)
 	}
+	results = removeDupes(results)
 	fmt.Printf("calculationTime(%v)\n", time.Since(start))
 	fmt.Println("Results:")
-	for i, result := range results {
-		fmt.Printf("%v: %v,%v,%v\n", i, result[0], result[1], result[2])
+	for _, result := range results {
+
+		fmt.Printf("%v,%v,%v\n", result[0], result[1], result[2])
 	}
 }
 
@@ -182,4 +185,28 @@ Permutations:
 		return false
 	}
 	return true
+}
+
+// sort and Dedupe
+type BySize [3]int
+
+func (a BySize) Len() int           { return len(a) }
+func (a BySize) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a BySize) Less(i, j int) bool { return a[i] < a[j] }
+
+func removeDupes(results [][3]int) [][3]int {
+	for i, _ := range results {
+		sort.Sort(BySize(results[i]))
+	}
+	deduped := [][3]int{}
+OuterLoop:
+	for _, r := range results {
+		for _, d := range deduped {
+			if r[0] == d[0] && r[1] == d[1] && r[2] == d[2] {
+				continue OuterLoop
+			}
+		}
+		deduped = append(deduped, r)
+	}
+	return deduped
 }
