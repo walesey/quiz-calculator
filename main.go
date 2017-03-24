@@ -29,26 +29,11 @@ All numbers must be positive integers.
 /*
 The following go program solves the above problem by brute force using a go worker pool
 Output:
-calculationTime(4m19.8700246s)
+calculationTime(44.4156136s)
 Results:
-225,209,217
-225,217,209
-197,205,213
-197,213,205
-199,175,223
-199,223,175
-205,197,213
-205,213,197
 175,199,223
-175,223,199
+197,205,213
 209,217,225
-209,225,217
-213,197,205
-213,205,197
-217,209,225
-217,225,209
-223,175,199
-223,199,175
 */
 
 type GameState struct {
