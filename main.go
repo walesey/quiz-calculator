@@ -25,6 +25,11 @@ In the example above (1,4,6), there is no way to end the game in less than 15 mi
 All numbers must be positive integers.
 */
 
+/////////////////////////////////////////
+/*
+	The following go program solves the previous problem by brute force using a go worker pool
+*/
+
 type GameState struct {
 	turnCount      int
 	players        [3]int
@@ -60,14 +65,6 @@ func (this *RandomSequence) next() int {
 	return result
 }
 
-func (this *GameState) resolve(winner, loser int) {
-	// fmt.Println("winner ", winner, this.players[winner])
-	// fmt.Println("loser ", loser, this.players[loser])
-	// fmt.Println("")
-	this.players[loser] = this.players[loser] - this.players[winner]
-	this.players[winner] = this.players[winner] * 2
-}
-
 func (this *GameState) turn() bool {
 	this.turnCount = this.turnCount + 1
 	rest := this.randomSequence.next() % 3
@@ -90,39 +87,60 @@ func (this *GameState) turn() bool {
 	return false
 }
 
+func (this *GameState) resolve(winner, loser int) {
+	this.players[loser] = this.players[loser] - this.players[winner]
+	this.players[winner] = this.players[winner] * 2
+}
+
+// MAIN
 func main() {
-	results := simulateAllStates(4)
-	for turns := 5; turns <= 12; turns++ {
-		results = simulateSubset(turns, results)
+	start := time.Now()
+	output := make(chan [3]int, 1000)
+	progress := make(chan int)
+	defer close(output)
+	defer close(progress)
+
+	go func() {
+		counter := 0
+		for p := range progress {
+			counter++
+			percent := (counter * 100) / 256
+			fmt.Println(p, ": Percent Complete: ", percent)
+		}
+	}()
+
+	for i := 1; i < 256; i += (256 / 4) {
+		j := i + (256 / 4)
+		if j == 257 {
+			j = 256
+		}
+		fmt.Printf("Simulating: %v to %v\n", i, j)
+		go simulateAllStates(12, i, j, output, progress)
+	}
+
+	var results [][3]int
+	for result := range output {
+		fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
+		results = append(results, result)
+	}
+	fmt.Printf("calculationTime(%v)\n", time.Since(start))
+	fmt.Println("Results:")
+	for i, result := range results {
+		fmt.Printf("%v: %v,%v,%v\n", i, result[0], result[1], result[2])
 	}
 }
 
-func simulateAllStates(turns int) [][3]int {
-	start := time.Now()
-	states := [][3]int{}
-	for p1 := 1; p1 < 256; p1++ {
+func simulateAllStates(turns, from, to int, output chan [3]int, progress chan int) {
+	for p1 := from; p1 < to; p1++ {
 		for p2 := 1; p2 < 256; p2++ {
 			for p3 := 1; p3 < 256; p3++ {
 				if simulatePermutations(turns, p1, p2, p3) {
-					states = append(states, [3]int{p1, p2, p3})
+					output <- [3]int{p1, p2, p3}
 				}
 			}
 		}
+		progress <- p1
 	}
-	fmt.Printf("simulateAllStates: turns(%v) : results(%v) time(%v)\n", turns, len(states), time.Since(start))
-	return states
-}
-
-func simulateSubset(turns int, subset [][3]int) [][3]int {
-	start := time.Now()
-	states := [][3]int{}
-	for _, set := range subset {
-		if simulatePermutations(turns, set[0], set[1], set[2]) {
-			states = append(states, set)
-		}
-	}
-	fmt.Printf("simulateAllStates: turns(%v) : results(%v) time(%v)\n", turns, len(states), time.Since(start))
-	return states
 }
 
 func simulatePermutations(turns, p1, p2, p3 int) bool {
@@ -141,6 +159,3 @@ Permutations:
 	}
 	return true
 }
-
-// fmt.Printf("Turns: %v, Game Ended : %v : %v : %v\n", game.turnCount, p1, p2, p3)
-// fmt.Printf("Final: : %v : %v : %v\n", game.players[0], game.players[1], game.players[2])
