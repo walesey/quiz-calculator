@@ -124,33 +124,33 @@ func main() {
 		go simulate(12, input, output)
 	}
 
-	// process output
 	go func() {
-		var results [][3]int
-		for result := range output {
-			fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
-			results = append(results, result)
+		counter := 0
+		for p1 := 1; p1 < 256; p1++ {
+			for p2 := (p1 + 1); p2 < 256; p2++ {
+				for p3 := (p2 + 1); p3 < 256; p3++ {
+					input <- [3]int{p1, p2, p3}
+				}
+			}
+			counter++
+			percent := (counter * 100) / 256
+			fmt.Printf("Percent Complete: %v\n", percent)
 		}
+		close(input)
 		close(output)
-		fmt.Printf("calculationTime(%v)\n", time.Since(start))
-		fmt.Println("Results:")
-		for _, result := range results {
-			fmt.Printf("%v,%v,%v\n", result[0], result[1], result[2])
-		}
 	}()
 
-	counter := 0
-	for p1 := 1; p1 < 256; p1++ {
-		for p2 := (p1 + 1); p2 < 256; p2++ {
-			for p3 := (p2 + 1); p3 < 256; p3++ {
-				input <- [3]int{p1, p2, p3}
-			}
-		}
-		counter++
-		percent := (counter * 100) / 256
-		fmt.Printf("Percent Complete: %v\n", percent)
+	// process output
+	var results [][3]int
+	for result := range output {
+		fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
+		results = append(results, result)
 	}
-	close(input)
+	fmt.Printf("calculationTime(%v)\n", time.Since(start))
+	fmt.Println("Results:")
+	for _, result := range results {
+		fmt.Printf("%v,%v,%v\n", result[0], result[1], result[2])
+	}
 }
 
 func simulate(turns int, input, output chan [3]int) {
