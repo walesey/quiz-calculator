@@ -112,8 +112,8 @@ func main() {
 	go func() {
 		counter := 0
 		for p1 := 1; p1 < 256; p1++ {
-			for p2 := (p1 + 1); p2 < 256; p2++ {
-				for p3 := (p2 + 1); p3 < 256; p3++ {
+			for p2 := p1; p2 < 256; p2++ {
+				for p3 := p2; p3 < 256; p3++ {
 					input <- [3]int{p1, p2, p3}
 				}
 			}
