@@ -132,9 +132,10 @@ func main() {
 		}
 	}()
 
-	for i := 1; i < 256; i += (256 / 4) {
-		j := i + (256 / 4)
-		if j == 257 {
+	nbWorkers := 8
+	for i := 1; i < 256; i += (256 / nbWorkers) {
+		j := i + (256 / nbWorkers)
+		if j > 256 {
 			j = 256
 		}
 		fmt.Printf("Simulating: %v to %v\n", i, j)
