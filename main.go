@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"sort"
 	"time"
 )
 
@@ -117,56 +116,48 @@ func (this *GameState) resolve(winner, loser int) {
 // MAIN
 func main() {
 	start := time.Now()
+	input := make(chan [3]int, 1000)
 	output := make(chan [3]int, 1000)
-	progress := make(chan int)
 
+	nbWorkers := 8
+	for i := 0; i < nbWorkers; i++ {
+		go simulate(12, input, output)
+	}
+
+	// process output
 	go func() {
-		counter := 0
-		for p := range progress {
-			counter++
-			percent := (counter * 100) / 256
-			fmt.Printf("Percent Complete: %v (%v)\n", percent, p)
-			if counter == 255 {
-				close(output)
-				close(progress)
-			}
+		var results [][3]int
+		for result := range output {
+			fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
+			results = append(results, result)
+		}
+		close(output)
+		fmt.Printf("calculationTime(%v)\n", time.Since(start))
+		fmt.Println("Results:")
+		for _, result := range results {
+			fmt.Printf("%v,%v,%v\n", result[0], result[1], result[2])
 		}
 	}()
 
-	nbWorkers := 8
-	for i := 1; i < 256; i += (256 / nbWorkers) {
-		j := i + (256 / nbWorkers)
-		if j > 256 {
-			j = 256
-		}
-		fmt.Printf("Simulating: %v to %v\n", i, j)
-		go simulateAllStates(12, i, j, output, progress)
-	}
-
-	var results [][3]int
-	for result := range output {
-		fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
-		results = append(results, result)
-	}
-	results = removeDupes(results)
-	fmt.Printf("calculationTime(%v)\n", time.Since(start))
-	fmt.Println("Results:")
-	for _, result := range results {
-
-		fmt.Printf("%v,%v,%v\n", result[0], result[1], result[2])
-	}
-}
-
-func simulateAllStates(turns, from, to int, output chan [3]int, progress chan int) {
-	for p1 := from; p1 < to; p1++ {
-		for p2 := 1; p2 < 256; p2++ {
-			for p3 := 1; p3 < 256; p3++ {
-				if simulatePermutations(turns, p1, p2, p3) {
-					output <- [3]int{p1, p2, p3}
-				}
+	counter := 0
+	for p1 := 1; p1 < 256; p1++ {
+		for p2 := (p1 + 1); p2 < 256; p2++ {
+			for p3 := (p2 + 1); p3 < 256; p3++ {
+				input <- [3]int{p1, p2, p3}
 			}
 		}
-		progress <- p1
+		counter++
+		percent := (counter * 100) / 256
+		fmt.Printf("Percent Complete: %v\n", percent)
+	}
+	close(input)
+}
+
+func simulate(turns int, input, output chan [3]int) {
+	for in := range input {
+		if simulatePermutations(turns, in[0], in[1], in[2]) {
+			output <- in
+		}
 	}
 }
 
@@ -185,28 +176,4 @@ Permutations:
 		return false
 	}
 	return true
-}
-
-// sort and Dedupe
-type BySize [3]int
-
-func (a BySize) Len() int           { return len(a) }
-func (a BySize) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a BySize) Less(i, j int) bool { return a[i] < a[j] }
-
-func removeDupes(results [][3]int) [][3]int {
-	for i, _ := range results {
-		sort.Sort(BySize(results[i]))
-	}
-	deduped := [][3]int{}
-OuterLoop:
-	for _, r := range results {
-		for _, d := range deduped {
-			if r[0] == d[0] && r[1] == d[1] && r[2] == d[2] {
-				continue OuterLoop
-			}
-		}
-		deduped = append(deduped, r)
-	}
-	return deduped
 }
