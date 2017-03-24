@@ -27,7 +27,28 @@ All numbers must be positive integers.
 
 /////////////////////////////////////////
 /*
-	The following go program solves the previous problem by brute force using a go worker pool
+The following go program solves the above problem by brute force using a go worker pool
+Output:
+calculationTime(6m1.2539174s)
+Results:
+0: 197,205,213
+1: 197,213,205
+2: 199,175,223
+3: 199,223,175
+4: 205,197,213
+5: 205,213,197
+6: 209,217,225
+7: 209,225,217
+8: 213,197,205
+9: 213,205,197
+10: 217,209,225
+11: 217,225,209
+12: 223,175,199
+13: 223,199,175
+14: 225,209,217
+15: 225,217,209
+16: 175,199,223
+17: 175,223,199
 */
 
 type GameState struct {
@@ -97,15 +118,17 @@ func main() {
 	start := time.Now()
 	output := make(chan [3]int, 1000)
 	progress := make(chan int)
-	defer close(output)
-	defer close(progress)
 
 	go func() {
 		counter := 0
 		for p := range progress {
 			counter++
 			percent := (counter * 100) / 256
-			fmt.Println(p, ": Percent Complete: ", percent)
+			fmt.Printf("Percent Complete: %v (%v)\n", percent, p)
+			if counter == 255 {
+				close(output)
+				close(progress)
+			}
 		}
 	}()
 
