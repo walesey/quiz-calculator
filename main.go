@@ -36,6 +36,8 @@ Results:
 209,217,225
 */
 
+const turns = 12
+
 type GameState struct {
 	turnCount      int
 	players        [3]int
@@ -43,6 +45,7 @@ type GameState struct {
 }
 
 func NewGame(p1, p2, p3 int, randomSequence *RandomSequence) *GameState {
+	randomSequence.reset()
 	return &GameState{
 		players:        [3]int{p1, p2, p3},
 		randomSequence: randomSequence,
@@ -54,11 +57,11 @@ type RandomSequence struct {
 	sequence []int
 }
 
-func NewRandomSequence(turns, seed int) *RandomSequence {
+func NewRandomSequence(nbTurns, seed int) *RandomSequence {
 	rs := &RandomSequence{
-		sequence: make([]int, turns),
+		sequence: make([]int, nbTurns),
 	}
-	for i := 0; i < turns; i++ {
+	for i := 0; i < nbTurns; i++ {
 		rs.sequence[i] = seed % 3
 		seed = seed / 3
 	}
@@ -69,6 +72,10 @@ func (this *RandomSequence) next() int {
 	result := this.sequence[this.index]
 	this.index++
 	return result
+}
+
+func (this *RandomSequence) reset() {
+	this.index = 0
 }
 
 func (this *GameState) turn() bool {
@@ -106,7 +113,8 @@ func main() {
 
 	nbWorkers := 8
 	for i := 0; i < nbWorkers; i++ {
-		go simulate(12, input, output)
+		simulator := NewSimulator()
+		go simulator.simulate(input, output)
 	}
 
 	go func() {
@@ -138,19 +146,35 @@ func main() {
 	}
 }
 
-func simulate(turns int, input, output chan [3]int) {
+//////////////
+// Simulator
+type Simulator struct {
+	sequences []*RandomSequence
+}
+
+func NewSimulator() *Simulator {
+	length := int(math.Pow(3, float64(turns)))
+	sequences := make([]*RandomSequence, length)
+	for p := 0; p < length; p++ {
+		sequences[p] = NewRandomSequence(turns, p)
+	}
+	return &Simulator{
+		sequences: sequences,
+	}
+}
+
+func (this *Simulator) simulate(input, output chan [3]int) {
 	for in := range input {
-		if simulatePermutations(turns, in[0], in[1], in[2]) {
+		if this.simulatePermutations(in[0], in[1], in[2]) {
 			output <- in
 		}
 	}
 }
 
-func simulatePermutations(turns, p1, p2, p3 int) bool {
-	length := int(math.Pow(3, float64(turns)))
+func (this *Simulator) simulatePermutations(p1, p2, p3 int) bool {
 Permutations:
-	for p := 0; p < length; p++ {
-		game := NewGame(p1, p2, p3, NewRandomSequence(turns, p))
+	for _, permutation := range this.sequences {
+		game := NewGame(p1, p2, p3, permutation)
 		end := false
 		for !end {
 			end = game.turn()
