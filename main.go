@@ -29,80 +29,63 @@ All numbers must be positive integers.
 /*
 The following go program solves the above problem by brute force using a go worker pool
 Output:
-calculationTime(44.4156136s)
+calculationTime(6.337055566s)
 Results:
 175,199,223
 197,205,213
 209,217,225
 */
 
-const turns = 12
+const turns = 11
+const nbWorkers = 4
 
-type GameState struct {
-	turnCount      int
-	players        [3]int
-	randomSequence *RandomSequence
-}
+type RandomSequence []int
 
-func NewGame(p1, p2, p3 int, randomSequence *RandomSequence) *GameState {
-	randomSequence.reset()
-	return &GameState{
-		players:        [3]int{p1, p2, p3},
-		randomSequence: randomSequence,
-	}
-}
-
-type RandomSequence struct {
-	index    int
-	sequence []int
-}
-
-func NewRandomSequence(nbTurns, seed int) *RandomSequence {
-	rs := &RandomSequence{
-		sequence: make([]int, nbTurns),
-	}
+func NewRandomSequence(nbTurns, seed int) RandomSequence {
+	rs := make([]int, nbTurns)
 	for i := 0; i < nbTurns; i++ {
-		rs.sequence[i] = seed % 3
+		rs[i] = seed % 3
 		seed = seed / 3
 	}
 	return rs
 }
 
-func (this *RandomSequence) next() int {
-	result := this.sequence[this.index]
-	this.index++
-	return result
-}
+func game(p1, p2, p3 int, sequence RandomSequence) bool {
+	for t, rest := range sequence {
+		if p1 == p2 || p2 == p3 || p3 == p1 {
+			return t == turns
+		}
 
-func (this *RandomSequence) reset() {
-	this.index = 0
-}
-
-func (this *GameState) turn() bool {
-	this.turnCount = this.turnCount + 1
-	rest := this.randomSequence.next() % 3
-	p1, p2 := 0, 1
-	if rest == 0 {
-		p1, p2 = 1, 2
-	} else if rest == 1 {
-		p1, p2 = 0, 2
+		switch rest {
+		case 0:
+			if p2 > p3 {
+				p2 = p2 - p3
+				p3 = p3 * 2
+			} else {
+				p3 = p3 - p2
+				p2 = p2 * 2
+			}
+		case 1:
+			if p1 > p3 {
+				p1 = p1 - p3
+				p3 = p3 * 2
+			} else {
+				p3 = p3 - p1
+				p1 = p1 * 2
+			}
+		case 2:
+			if p1 > p2 {
+				p1 = p1 - p2
+				p2 = p2 * 2
+			} else {
+				p2 = p2 - p1
+				p1 = p1 * 2
+			}
+		default:
+			fmt.Println("error rest:", rest)
+		}
 	}
-
-	if this.players[p1] == this.players[p2] {
-		return true // game ends
-	}
-
-	if this.players[p1] < this.players[p2] {
-		this.resolve(p1, p2)
-	} else {
-		this.resolve(p2, p1)
-	}
-	return false
-}
-
-func (this *GameState) resolve(winner, loser int) {
-	this.players[loser] = this.players[loser] - this.players[winner]
-	this.players[winner] = this.players[winner] * 2
+	return true
 }
 
 // MAIN
@@ -111,9 +94,8 @@ func main() {
 	input := make(chan [3]int, 1000)
 	output := make(chan [3]int, 1000)
 
-	nbWorkers := 8
+	simulator := NewSimulator()
 	for i := 0; i < nbWorkers; i++ {
-		simulator := NewSimulator()
 		go simulator.simulate(input, output)
 	}
 
@@ -149,16 +131,17 @@ func main() {
 //////////////
 // Simulator
 type Simulator struct {
-	sequences []*RandomSequence
+	sequences []RandomSequence
 }
 
-func NewSimulator() *Simulator {
+func NewSimulator() Simulator {
 	length := int(math.Pow(3, float64(turns)))
-	sequences := make([]*RandomSequence, length)
+	fmt.Println(length)
+	sequences := make([]RandomSequence, length)
 	for p := 0; p < length; p++ {
 		sequences[p] = NewRandomSequence(turns, p)
 	}
-	return &Simulator{
+	return Simulator{
 		sequences: sequences,
 	}
 }
@@ -172,17 +155,10 @@ func (this *Simulator) simulate(input, output chan [3]int) {
 }
 
 func (this *Simulator) simulatePermutations(p1, p2, p3 int) bool {
-Permutations:
-	for _, permutation := range this.sequences {
-		game := NewGame(p1, p2, p3, permutation)
-		end := false
-		for !end {
-			end = game.turn()
-			if game.turnCount == turns {
-				continue Permutations
-			}
+	for _, sequence := range this.sequences {
+		if !game(p1, p2, p3, sequence) {
+			return false
 		}
-		return false
 	}
 	return true
 }
