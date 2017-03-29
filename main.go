@@ -41,7 +41,7 @@ sys     0m0.106s
 */
 
 const turns = 11
-const nbWorkers = 4
+const nbWorkers = 16
 
 type RandomSequence []int
 
