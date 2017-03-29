@@ -29,11 +29,15 @@ All numbers must be positive integers.
 /*
 The following go program solves the above problem by brute force using a go worker pool
 Output:
-calculationTime(6.337055566s)
+calculationTime(4.966692267s)
 Results:
 175,199,223
 197,205,213
 209,217,225
+
+real    0m5.182s
+user    0m17.960s
+sys     0m0.106s
 */
 
 const turns = 11
@@ -100,16 +104,12 @@ func main() {
 	}
 
 	go func() {
-		counter := 0
 		for p1 := 1; p1 < 256; p1++ {
 			for p2 := p1; p2 < 256; p2++ {
 				for p3 := p2; p3 < 256; p3++ {
 					input <- [3]int{p1, p2, p3}
 				}
 			}
-			counter++
-			percent := (counter * 100) / 256
-			fmt.Printf("Percent Complete: %v\n", percent)
 		}
 		close(input)
 		close(output)
@@ -118,7 +118,6 @@ func main() {
 	// process output
 	var results [][3]int
 	for result := range output {
-		fmt.Printf("Valid: %v,%v,%v\n", result[0], result[1], result[2])
 		results = append(results, result)
 	}
 	fmt.Printf("calculationTime(%v)\n", time.Since(start))
@@ -136,7 +135,6 @@ type Simulator struct {
 
 func NewSimulator() Simulator {
 	length := int(math.Pow(3, float64(turns)))
-	fmt.Println(length)
 	sequences := make([]RandomSequence, length)
 	for p := 0; p < length; p++ {
 		sequences[p] = NewRandomSequence(turns, p)
